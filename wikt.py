@@ -18,8 +18,22 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 
 
+namespaces = {"special"}
+
+def firstcap(s):
+	return s[0].upper() + s[1:]
+
 def normalize_title(title):
-	return title.replace(" ", "_")
+	title = title.replace(" ", "_")
+	if ":" in title:
+		namespace, title = title.split(":")
+		if namespace.lower() not in namespaces:
+			return hard_404("No such namespace")
+		title = "{}:{}".format(namespace.capitalize(), firstcap(title))
+	else:
+		title = firstcap(title)
+
+	return title
 
 
 def write_page(title, contents):
@@ -42,7 +56,21 @@ def hard_404(error):
 
 @app.route("/wiki/")
 def index():
-	return redirect(MAIN_PAGE)
+	return redirect("/wiki/" + MAIN_PAGE)
+
+@app.route("/wiki/Special:RecentChanges")
+def recent_changes():
+	commits = []
+	for oid in app.repo:
+		obj = app.repo[oid]
+		if obj.type == git.GIT_OBJ_COMMIT:
+			commits.append({
+				"hash": obj.hex,
+				"message": obj.message,
+				"date": obj.commit_time,
+				"author": obj.author.name,
+			})
+	return render_template("recent_changes.html", commits=commits)
 
 
 @app.route("/wiki/<path:path>")
