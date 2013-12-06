@@ -1,6 +1,7 @@
 import os.path
 import pygit2 as git
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
+from forms import EditForm
 
 
 # configuration
@@ -24,6 +25,9 @@ def firstcap(s):
 	return s[0].upper() + s[1:]
 
 def normalize_title(title):
+	"""
+	Mediawiki-compatible title normalization
+	"""
 	title = title.replace(" ", "_")
 	if ":" in title:
 		namespace, title = title.split(":")
@@ -35,6 +39,12 @@ def normalize_title(title):
 
 	return title
 
+def get_file(title):
+	tree = app.repo.revparse_single("master").tree
+	try:
+		return app.repo[tree[title].oid]
+	except KeyError:
+		return None
 
 def write_page(title, contents):
 	title = normalize_title(title)
@@ -79,11 +89,25 @@ def show_page(path):
 	if path != title:
 		return redirect("/wiki/{}".format(title))
 
-	tree = app.repo.revparse_single("master").tree
-	try:
-		return app.repo[tree[title].oid].data
-	except KeyError:
+	file = get_file(title)
+	if file is None:
 		return soft_404(path)
+	return file.data
+
+
+@app.route("/edit/<path:path>", methods=["GET", "POST"])
+def edit_page(path):
+	title = normalize_title(path)
+	if path != title:
+		return redirect("/edit/{}".format(title))
+
+	form = EditForm(request.form)
+
+	file = get_file(title)
+	if file is not None:
+		form.text.data = file.data.decode()
+
+	return render_template("edit_page.html", form=form)
 
 
 if __name__ == "__main__":

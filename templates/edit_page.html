@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Edit page </title>
+</head>
+<body>
+	<form action="" method="POST">
+		<p>
+			{{ form.text()|safe }}
+		</p>
+		<p>
+			<label>{{ form.minor_edit.label }} {{ form.minor_edit()|safe }}</label>
+		</p>
+
+		<input type="submit" value="Save page">
+	</form>
+</body>
+</html>
