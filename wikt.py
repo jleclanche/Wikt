@@ -46,14 +46,20 @@ def get_file(title):
 	except KeyError:
 		return None
 
-def write_page(title, contents):
+def write_page(title, contents, message):
 	title = normalize_title(title)
+	if app.repo.is_empty:
+		parents = []
+	else:
+		parent_commit = app.repo[app.repo.head.target]
+		parents = [parent_commit.hex]
+
 	blob = app.repo.create_blob(contents)
 	tree = app.repo.TreeBuilder()
 	tree.insert(title, blob, git.GIT_FILEMODE_BLOB)
 	oid = tree.write()
 	author = git.Signature("Jerome Leclanche", "jerome@leclan.ch")
-	app.repo.create_commit("HEAD", author, committer, "Initial commit", oid, [])
+	app.repo.create_commit("HEAD", author, WEB_COMMITTER, message, oid, parents)
 
 
 def soft_404(error):
@@ -101,9 +107,17 @@ def edit_page(path):
 	if path != title:
 		return redirect("/edit/{}".format(title))
 
+	file = get_file(title)
 	form = EditForm(request.form)
 
-	file = get_file(title)
+	if request.method == "POST" and form.validate():
+		if form.text.data != file.data.decode():
+			write_page(title, form.text.data, "default edit message")
+			flash("Your changes have been saved")
+		else:
+			flash("No changes")
+		return redirect("/wiki/{}".format(title))
+
 	if file is not None:
 		form.text.data = file.data.decode()
 
@@ -116,6 +130,6 @@ if __name__ == "__main__":
 	except KeyError:
 		print("No wiki found. Creating at %r" % (REPOSITORY_PATH))
 		app.repo = git.init_repository(REPOSITORY_PATH)
-		write_page("Main Page", "Welcome to the wiki!")
+		write_page("Main Page", "Welcome to the wiki!", "Initial commit")
 
 	app.run()
