@@ -71,6 +71,14 @@ def hard_404(error):
 def index():
 	return redirect("/wiki/" + MAIN_PAGE)
 
+
+@app.route("/wiki/Special:AllPages")
+def all_pages():
+	tree = app.repo.revparse_single("master").tree
+	pages = [f.name for f in tree]
+	return render_template("all_pages.html", pages=pages)
+
+
 @app.route("/wiki/Special:RecentChanges")
 def recent_changes():
 	commits = []
