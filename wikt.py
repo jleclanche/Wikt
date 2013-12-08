@@ -79,7 +79,7 @@ def index():
 def all_pages():
 	tree = app.repo.revparse_single("master").tree
 	pages = [f.name for f in tree]
-	return render_template("all_pages.html", pages=pages)
+	return render_template("special/all_pages.html", pages=pages)
 
 
 @app.route("/wiki/Special:RecentChanges")
@@ -94,7 +94,7 @@ def recent_changes():
 				"date": obj.commit_time,
 				"author": obj.author.name,
 			})
-	return render_template("recent_changes.html", commits=commits)
+	return render_template("special/recent_changes.html", commits=commits)
 
 
 @app.route("/wiki/<path:path>")
@@ -108,7 +108,7 @@ def article_view(path):
 	if file is None:
 		return soft_404(path)
 
-	return render_template("view_page.html", title=title, contents=file.data.decode(), path=path)
+	return render_template("article/view.html", title=title, contents=file.data.decode(), path=path)
 
 
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
@@ -133,7 +133,7 @@ def article_edit(path):
 	if file is not None:
 		form.text.data = file.data.decode()
 
-	return render_template("edit_page.html", title=title, form=form, is_new=file is None, path=path)
+	return render_template("article/edit.html", title=title, form=form, is_new=file is None, path=path)
 
 @app.route("/history/<path:path>")
 def article_history(path):
