@@ -62,8 +62,9 @@ def write_page(title, contents, message):
 	app.repo.create_commit("HEAD", author, WEB_COMMITTER, message, builder.write(), parents)
 
 
-def soft_404(path):
-	return 'There is currently no text in this page. You can <a href="{}">edit it</a>, though.'.format(url_for("article_edit", path=path)), 404
+def article_not_found(path, title):
+	# This is a soft 404 error for actual articles that don't exist yet
+	return render_template("article/not_found.html", title=title, path=path), 404
 
 @app.errorhandler(404)
 def hard_404(error):
@@ -106,7 +107,7 @@ def article_view(path):
 
 	file = get_file(title)
 	if file is None:
-		return soft_404(path)
+		return article_not_found(path, title)
 
 	return render_template("article/view.html", title=title, contents=file.data.decode(), path=path)
 
