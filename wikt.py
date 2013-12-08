@@ -71,9 +71,9 @@ def delete_file(path, message):
 	commit(builder, message)
 
 
-def article_not_found(path, title):
+def article_not_found(path, title, error=None):
 	# This is a soft 404 error for actual articles that don't exist yet
-	return render_template("article/not_found.html", title=title, path=path), 404
+	return render_template("article/not_found.html", title=title, path=path, error=error), 404
 
 
 @app.errorhandler(404)
@@ -166,6 +166,8 @@ def article_delete(path):
 	title = humanize_title(_path)
 
 	file = get_file(title)
+	if not file:
+		return article_not_found(path, title, error="This page cannot be deleted because it does not exist.")
 	form = DeleteForm(request.form)
 
 	if request.method == "POST" and form.validate():

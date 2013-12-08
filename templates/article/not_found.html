@@ -2,6 +2,10 @@
 {% block title %}{{ title }}{% endblock %}
 {% block page %}
 	<p>
-		The article <strong>{{ name }}</strong> does not exist. You can <a href="{{ url_for('article_edit', path=path) }}">create it</a>.
+		{% if error %}
+			{{ error }}
+		{% else %}
+			The article <strong>{{ name }}</strong> does not exist. You can <a href="{{ url_for('article_edit', path=path) }}">create it</a>.
+		{% endif %}
 	</p>
 {% endblock %}
