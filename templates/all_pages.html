@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>All pages</title>
-</head>
-<body>
+{% block title %}All pages{% endblock %}
+{% block body %}
 	<ul>
 		{% for page in pages %}
 			<li><a href="/wiki/{{page}}">{{page}}</a></li>
 		{% endfor %}
 	</ul>
-</body>
-</html>
+{% endblock %}
