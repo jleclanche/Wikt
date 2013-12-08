@@ -4,15 +4,17 @@
 <title>{% block title %}Wikt{% endblock %}</title>
 </head>
 <body>
-	{% block tabs %}
-		<ul>
-			<li><a href="{{ url_for('article_view', path=path) }}">Read</a></li>
-			<li><a href="{{ url_for('article_edit', path=path) }}">Edit</a></li>
-			<li><a href="{{ url_for('article_history', path=path) }}">View history</a></li>
-			<li><a href="{{ url_for('article_delete', path=path) }}">Delete</a></li>
-		</ul>
-	{% endblock %}
-	{% block page %}
+	{% block body %}
+		{% block tabs %}
+			<ul>
+				<li><a href="{{ url_for('article_view', path=path) }}">Read</a></li>
+				<li><a href="{{ url_for('article_edit', path=path) }}">Edit</a></li>
+				<li><a href="{{ url_for('article_history', path=path) }}">View history</a></li>
+				<li><a href="{{ url_for('article_delete', path=path) }}">Delete</a></li>
+			</ul>
+		{% endblock %}
+		{% block page %}
+		{% endblock %}
 	{% endblock %}
 </body>
 </html>

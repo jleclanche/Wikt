@@ -78,7 +78,7 @@ def article_not_found(path, title, error=None):
 
 @app.errorhandler(404)
 def hard_404(error):
-	return 'Are you lost?', 404
+	return render_template("404.html"), 404
 
 
 @app.route("/wiki/")
