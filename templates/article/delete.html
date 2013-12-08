@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Deleting {{ title }}{% endblock %}
+{% block page %}
+	<p>
+		You are about to delete the article <strong>{{ title }}</strong>.
+		The page will no longer be accessible to users, but its history and contents will remain accessible in the repository.
+	</p>
+	<form action="" method="post">
+		<p>
+			<label>{{ form.summary.label }} {{ form.summary()|safe }}</label>
+		</p>
+
+		<input type="submit" value="Delete page">
+	</form>
+{% endblock %}

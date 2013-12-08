@@ -1,7 +1,7 @@
 import os.path
 import pygit2 as git
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
-from forms import EditForm
+from forms import DeleteForm, EditForm
 
 
 # configuration
@@ -50,21 +50,31 @@ def get_file(title):
 	except KeyError:
 		return None
 
-def write_page(title, contents, message):
-	author = git.Signature("Jerome Leclanche", "jerome@leclan.ch")
 
+def commit(builder, message):
+	author = git.Signature("Jerome Leclanche", "jerome@leclan.ch")
 	parent_commit = app.repo[app.repo.head.target]
 	parents = [parent_commit.hex]
-	tree = app.repo.revparse_single("master").tree
-	builder = app.repo.TreeBuilder(tree)
 
-	builder.insert(title, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
 	app.repo.create_commit("HEAD", author, WEB_COMMITTER, message, builder.write(), parents)
+
+
+def commit_file(path, contents, message):
+	builder = app.repo.TreeBuilder(app.repo.revparse_single("master").tree)
+	builder.insert(path, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
+	commit(builder, message)
+
+
+def delete_file(path, message):
+	builder = app.repo.TreeBuilder(app.repo.revparse_single("master").tree)
+	builder.remove(path)
+	commit(builder, message)
 
 
 def article_not_found(path, title):
 	# This is a soft 404 error for actual articles that don't exist yet
 	return render_template("article/not_found.html", title=title, path=path), 404
+
 
 @app.errorhandler(404)
 def hard_404(error):
@@ -128,11 +138,11 @@ def article_edit(path):
 			if file:
 				if not form.summary.data:
 					form.summary.data = "Blanked the page"
-				write_page(title, form.text.data, form.summary.data)
+				commit_file(path, form.text.data, form.summary.data)
 				flash("The page {} has been blanked".format(title))
 		elif form.text.data != (file and file.data.decode()):
 			# Commit only if the page is new or if its contents have changed
-			write_page(title, form.text.data, form.summary.data)
+			commit_file(path, form.text.data, form.summary.data)
 			flash("Your changes have been saved")
 		else:
 			flash("No changes")
@@ -141,16 +151,29 @@ def article_edit(path):
 	if file is not None:
 		form.text.data = file.data.decode()
 
-	return render_template("article/edit.html", title=title, form=form, is_new=file is None, path=path)
+	return render_template("article/edit.html", path=path, title=title, form=form, is_new=file is None)
 
 @app.route("/history/<path:path>")
 def article_history(path):
 	...
 
 
-@app.route("/delete/<path:path>")
+@app.route("/delete/<path:path>", methods=["GET", "POST"])
 def article_delete(path):
-	...
+	_path = normalize_title(path)
+	if path != _path:
+		return redirect(url_for("article_edit", path=_path))
+	title = humanize_title(_path)
+
+	file = get_file(title)
+	form = DeleteForm(request.form)
+
+	if request.method == "POST" and form.validate():
+		delete_file(path, form.summary.data)
+		flash("The page {} has been deleted".format(title))
+		return render_template("article/delete_complete.html")
+
+	return render_template("article/delete.html", path=path, title=title, form=form)
 
 
 REPO_TEMPLATE = {
