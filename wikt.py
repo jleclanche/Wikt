@@ -123,8 +123,15 @@ def article_edit(path):
 	form = EditForm(request.form)
 
 	if request.method == "POST" and form.validate():
-		# Commit only if the page is new or if its contents have changed
-		if form.text.data != (file and file.data.decode()):
+		if not form.text.data:
+			# The page has been blanked. Ignore the edit if it doesn't exist.
+			if file:
+				if not form.summary.data:
+					form.summary.data = "Blanked the page"
+				write_page(title, form.text.data, form.summary.data)
+				flash("The page {} has been blanked".format(title))
+		elif form.text.data != (file and file.data.decode()):
+			# Commit only if the page is new or if its contents have changed
 			write_page(title, form.text.data, form.summary.data)
 			flash("Your changes have been saved")
 		else:
