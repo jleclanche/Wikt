@@ -122,8 +122,9 @@ def article_edit(path):
 	form = EditForm(request.form)
 
 	if request.method == "POST" and form.validate():
+		# Commit only if the page is new or if its contents have changed
 		if form.text.data != (file and file.data.decode()):
-			write_page(title, form.text.data, "default edit message")
+			write_page(title, form.text.data, form.summary.data)
 			flash("Your changes have been saved")
 		else:
 			flash("No changes")
