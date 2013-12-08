@@ -1,13 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Recent changes</title>
-</head>
-<body>
+{% block title %}Recent changes {% endblock %}
+{% block body %}
 	<ul>
 		{% for commit in commits %}
 			<li>{{ commit.author }} — {{ commit.message }} ({{commit.hash}})</li>
 		{% endfor %}
 	</ul>
-</body>
-</html>
+{% endblock %}
