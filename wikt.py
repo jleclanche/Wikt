@@ -39,6 +39,10 @@ def normalize_title(title):
 
 	return title
 
+def humanize_title(title):
+	title = title.replace("_", " ")
+	return title
+
 def get_file(title):
 	tree = app.repo.revparse_single("master").tree
 	try:
@@ -47,7 +51,6 @@ def get_file(title):
 		return None
 
 def write_page(title, contents, message):
-	title = normalize_title(title)
 	author = git.Signature("Jerome Leclanche", "jerome@leclan.ch")
 
 	parent_commit = app.repo[app.repo.head.target]
@@ -59,8 +62,8 @@ def write_page(title, contents, message):
 	app.repo.create_commit("HEAD", author, WEB_COMMITTER, message, builder.write(), parents)
 
 
-def soft_404(error):
-	return 'There is currently no text in this page. You can <a href="/edit/{}">edit it</a>, though.'.format(error), 404
+def soft_404(path):
+	return 'There is currently no text in this page. You can <a href="{}">edit it</a>, though.'.format(url_for("article_edit", path=path)), 404
 
 @app.errorhandler(404)
 def hard_404(error):
@@ -69,7 +72,7 @@ def hard_404(error):
 
 @app.route("/wiki/")
 def index():
-	return redirect("/wiki/" + MAIN_PAGE)
+	return redirect(url_for("article_view", path=MAIN_PAGE))
 
 
 @app.route("/wiki/Special:AllPages")
@@ -95,22 +98,25 @@ def recent_changes():
 
 
 @app.route("/wiki/<path:path>")
-def show_page(path):
-	title = normalize_title(path)
-	if path != title:
-		return redirect("/wiki/{}".format(title))
+def article_view(path):
+	_path = normalize_title(path)
+	if path != _path:
+		return redirect(url_for("article_view", path=_path))
+	title = humanize_title(_path)
 
 	file = get_file(title)
 	if file is None:
 		return soft_404(path)
-	return render_template("view_page.html", title=title, contents=file.data.decode())
+
+	return render_template("view_page.html", title=title, contents=file.data.decode(), path=path)
 
 
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
-def edit_page(path):
-	title = normalize_title(path)
-	if path != title:
-		return redirect("/edit/{}".format(title))
+def article_edit(path):
+	_path = normalize_title(path)
+	if path != _path:
+		return redirect(url_for("article_edit", path=_path))
+	title = humanize_title(_path)
 
 	file = get_file(title)
 	form = EditForm(request.form)
@@ -121,12 +127,21 @@ def edit_page(path):
 			flash("Your changes have been saved")
 		else:
 			flash("No changes")
-		return redirect("/wiki/{}".format(title))
+		return redirect(url_for("article_view", path=path))
 
 	if file is not None:
 		form.text.data = file.data.decode()
 
-	return render_template("edit_page.html", title=title, form=form, is_new=file is None)
+	return render_template("edit_page.html", title=title, form=form, is_new=file is None, path=path)
+
+@app.route("/history/<path:path>")
+def article_history(path):
+	...
+
+
+@app.route("/delete/<path:path>")
+def article_delete(path):
+	...
 
 
 REPO_TEMPLATE = {
