@@ -1,5 +1,6 @@
+{% extends "base.html" %}
 {% block title %}All pages{% endblock %}
-{% block body %}
+{% block page %}
 	<ul>
 		{% for page in pages %}
 			<li><a href="/wiki/{{page}}">{{page}}</a></li>

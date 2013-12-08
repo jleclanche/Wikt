@@ -103,7 +103,7 @@ def show_page(path):
 	file = get_file(title)
 	if file is None:
 		return soft_404(path)
-	return file.data
+	return render_template("view_page.html", title=title, contents=file.data.decode())
 
 
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
@@ -126,7 +126,7 @@ def edit_page(path):
 	if file is not None:
 		form.text.data = file.data.decode()
 
-	return render_template("edit_page.html", form=form, is_new=file is None)
+	return render_template("edit_page.html", title=title, form=form, is_new=file is None)
 
 
 REPO_TEMPLATE = {

@@ -4,7 +4,15 @@
 <title>{% block title %}Wikt{% endblock %}</title>
 </head>
 <body>
-	{% block body %}
+	{% block tabs %}
+		<ul>
+			<li><a href="/wiki/{{page}}">Read</a></li>
+			<li><a href="/edit/{{page}}">Edit</a></li>
+			<li><a href="/history/{{page}}">View history</a></li>
+			<li><a href="/delete/{{page}}">Delete</a></li>
+		</ul>
+	{% endblock %}
+	{% block page %}
 	{% endblock %}
 </body>
 </html>

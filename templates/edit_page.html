@@ -1,5 +1,6 @@
-{% block title %}Edit page{% endblock %}
-{% block body %}
+{% extends "base.html" %}
+{% block title %}Editing {{ title }}{% endblock %}
+{% block page %}
 	{% if is_new %}
 		You have followed a link to a page that does not exist yet. Your edit will be saved as a new page.
 	{% endif %}

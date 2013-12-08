@@ -1,5 +1,6 @@
-{% block title %}Recent changes {% endblock %}
-{% block body %}
+{% extends "base.html" %}
+{% block title %}Recent changes{% endblock %}
+{% block page %}
 	<ul>
 		{% for commit in commits %}
 			<li>{{ commit.author }} — {{ commit.message }} ({{commit.hash}})</li>
