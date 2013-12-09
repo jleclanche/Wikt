@@ -59,6 +59,26 @@ def commit(builder, message):
 	app.repo.create_commit("HEAD", author, WEB_COMMITTER, message, builder.write(), parents)
 
 
+def iter_commits(path):
+	# There is no way in libgit/libgit2/pygit2 to get the commits affecting a specific file.
+	# Git does it by walking the entire commit tree. So do we.
+	last_commit = None
+	last_oid = None
+	for commit in app.repo.walk(app.repo.head.target, git.GIT_SORT_TIME):
+		if path in commit.tree:
+			oid = commit.tree[path].oid
+			if oid != last_oid and last_oid:
+				yield last_commit
+
+			last_oid = oid
+		else:
+			last_oid = None
+
+		last_commit = commit
+
+	if last_oid:
+		yield last_commit
+
 def commit_file(path, contents, message):
 	builder = app.repo.TreeBuilder(app.repo.revparse_single("master").tree)
 	builder.insert(path, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
@@ -156,7 +176,21 @@ def article_edit(path):
 
 @app.route("/history/<path:path>")
 def article_history(path):
-	...
+	_path = normalize_title(path)
+	if path != _path:
+		return redirect(url_for("article_edit", path=_path))
+	title = humanize_title(_path)
+	commits = []
+
+	for commit in iter_commits(path):
+		commits.append({
+				"hash": commit.hex,
+				"message": commit.message,
+				"date": commit.commit_time,
+				"author": commit.author.name,
+			})
+
+	return render_template("article/history.html", path=path, title=title, commits=commits)
 
 
 @app.route("/delete/<path:path>", methods=["GET", "POST"])
