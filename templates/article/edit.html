@@ -6,10 +6,10 @@
 	{% endif %}
 	<form action="" method="post">
 		<p>
-			{{ form.text()|safe }}
+			{{ form.text(rows=20, cols=120)|safe }}
 		</p>
 		<p>
-			<label>{{ form.summary.label }} {{ form.summary()|safe }}</label>
+			<label>{{ form.summary.label }} {{ form.summary(maxlength=80)|safe }}</label>
 		</p>
 		<p>
 			<label>{{ form.minor_edit()|safe }} {{ form.minor_edit.label }}</label>
