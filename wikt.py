@@ -81,6 +81,7 @@ def hard_404(error):
 	return render_template("404.html"), 404
 
 
+@app.route("/")
 @app.route("/wiki/")
 def index():
 	return redirect(url_for("article_view", path=MAIN_PAGE))
