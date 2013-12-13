@@ -43,8 +43,8 @@ def humanize_title(title):
 	title = title.replace("_", " ")
 	return title
 
-def get_file(title):
-	tree = app.repo.revparse_single("master").tree
+def get_file(title, commit="master"):
+	tree = app.repo.revparse_single(commit).tree
 	try:
 		return app.repo[tree[title].oid]
 	except KeyError:
@@ -89,6 +89,13 @@ def delete_file(path, message):
 	builder = app.repo.TreeBuilder(app.repo.revparse_single("master").tree)
 	builder.remove(path)
 	commit(builder, message)
+
+
+def get_request_commit():
+	commit = request.args.get("commit")
+	if commit:
+		return app.repo.revparse_single(commit).oid
+	return app.repo.head.target
 
 
 def article_not_found(path, title, error=None):
@@ -174,6 +181,7 @@ def article_edit(path):
 
 	return render_template("article/edit.html", path=path, title=title, form=form, is_new=file is None)
 
+
 @app.route("/history/<path:path>")
 def article_history(path):
 	_path = normalize_title(path)
@@ -182,11 +190,7 @@ def article_history(path):
 	title = humanize_title(_path)
 	commits = []
 
-	commit = request.args.get("commit")
-	if commit:
-		head = app.repo.revparse_single(commit).oid
-	else:
-		head = app.repo.head.target
+	head = get_request_commit()
 
 	for commit in iter_commits(path, head):
 		commits.append({
