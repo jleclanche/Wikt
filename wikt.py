@@ -43,8 +43,8 @@ def humanize_title(title):
 	title = title.replace("_", " ")
 	return title
 
-def get_file(title, commit="master"):
-	tree = app.repo.revparse_single(commit).tree
+def get_file(title, commit):
+	tree = app.repo.revparse_single(commit.hex).tree
 	try:
 		return app.repo[tree[title].oid]
 	except KeyError:
@@ -143,7 +143,7 @@ def article_view(path):
 		return redirect(url_for("article_view", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(path)
+	file = get_file(path, get_request_commit())
 	if file is None:
 		return article_not_found(path, title)
 
@@ -157,7 +157,7 @@ def article_edit(path):
 		return redirect(url_for("article_edit", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(path)
+	file = get_file(path, get_request_commit())
 	form = EditForm(request.form)
 
 	if request.method == "POST" and form.validate():
