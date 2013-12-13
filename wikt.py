@@ -175,14 +175,14 @@ def article_edit(path):
 	return render_template("article/edit.html", path=path, title=title, form=form, is_new=file is None)
 
 @app.route("/history/<path:path>")
-@app.route("/history/<path:path>/<commit>")
-def article_history(path, commit=None):
+def article_history(path):
 	_path = normalize_title(path)
 	if path != _path:
 		return redirect(url_for("article_edit", path=_path))
 	title = humanize_title(_path)
 	commits = []
 
+	commit = request.args.get("commit")
 	if commit:
 		head = app.repo.revparse_single(commit).oid
 	else:
