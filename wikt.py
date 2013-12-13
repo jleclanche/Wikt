@@ -92,10 +92,7 @@ def delete_file(path, message):
 
 
 def get_request_commit():
-	commit = request.args.get("commit")
-	if commit:
-		return app.repo.revparse_single(commit).oid
-	return app.repo.head.target
+	return app.repo.revparse_single(request.args.get("commit", "master")).oid
 
 
 def article_not_found(path, title, error=None):
@@ -136,6 +133,25 @@ def recent_changes():
 	return render_template("special/recent_changes.html", commits=commits)
 
 
+@app.route("/diff/<path:path>")
+def article_diff(path):
+	_path = normalize_title(path)
+	if path != _path:
+		return redirect(url_for("article_view", path=_path))
+	title = humanize_title(_path)
+
+	curid = request.args.get("commit", "master")
+	oldid = request.args.get("oldid")
+
+	file = get_file(path, curid)
+	if file is None:
+		return article_not_found(path, title)
+
+	diff = app.repo.diff(oldid, curid)
+
+	return render_template("article/diff.html", title=title, diff=diff)
+
+
 @app.route("/wiki/<path:path>")
 def article_view(path):
 	_path = normalize_title(path)
@@ -157,6 +173,7 @@ def clean_data(data):
 	if not data.endswith("\n"):
 		data += "\n"
 	return data
+
 
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
 def article_edit(path):

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Showing diff for {{ title }}{% endblock %}
+{% block page %}
+
+	{% for patch in diff %}
+		<table class="patch">
+			<tbody>
+				{% for hunk in patch.hunks %}
+					<tr>
+						<th>Line {{ hunk.old_start }}</th>
+<!-- 						<th>Line {{ hunk.new_start }}</th> -->
+					</tr>
+
+					{% for t, line in hunk.lines %}
+						<tr>
+							<td class="{% if t == '-' %}deleted{% elif t == '+' %}added{% endif %}">{{ line }}</td>
+						</tr>
+					{% endfor %}
+
+				{% endfor %}
+			</tbody>
+		</table>
+	{% endfor %}
+{% endblock %}

@@ -2,6 +2,18 @@
 <html>
 <head>
 <title>{% block title %}Wikt{% endblock %}</title>
+<style>
+table.patch td {
+	height: 1em;
+}
+table.patch td.added {
+	background-color: #dfd;
+}
+
+table.patch td.deleted {
+	background-color: #fdd;
+}
+</style>
 </head>
 <body>
 	{% block body %}
