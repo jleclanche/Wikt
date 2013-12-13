@@ -150,6 +150,14 @@ def article_view(path):
 	return render_template("article/view.html", title=title, contents=file.data.decode(), path=path)
 
 
+def clean_data(data):
+	"""
+	Clean a file before committing it.
+	"""
+	if not data.endswith("\n"):
+		data += "\n"
+	return data
+
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
 def article_edit(path):
 	_path = normalize_title(path)
@@ -170,7 +178,8 @@ def article_edit(path):
 				flash("The page {} has been blanked".format(title))
 		elif form.text.data != (file and file.data.decode()):
 			# Commit only if the page is new or if its contents have changed
-			commit_file(path, form.text.data, form.summary.data)
+			data = clean_data(form.text.data)
+			commit_file(path, data, form.summary.data)
 			flash("Your changes have been saved")
 		else:
 			flash("No changes")
@@ -237,7 +246,7 @@ if __name__ == "__main__":
 		author = git.Signature("Jerome Leclanche", "jerome@leclan.ch")
 		builder = app.repo.TreeBuilder()
 		for file, contents in REPO_TEMPLATE.items():
-			builder.insert(file, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
+			builder.insert(file, app.repo.create_blob(clean_data(contents)), git.GIT_FILEMODE_BLOB)
 			app.repo.create_commit("HEAD", author, WEB_COMMITTER, "Initial commit", builder.write(), [])
 
 	app.run()
