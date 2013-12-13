@@ -43,8 +43,8 @@ def humanize_title(title):
 	title = title.replace("_", " ")
 	return title
 
-def get_file(title, commit):
-	tree = app.repo.revparse_single(commit.hex).tree
+def get_file(title, commit="master"):
+	tree = app.repo.revparse_single(commit).tree
 	try:
 		return app.repo[tree[title].oid]
 	except KeyError:
@@ -143,7 +143,7 @@ def article_view(path):
 		return redirect(url_for("article_view", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(path, get_request_commit())
+	file = get_file(path, get_request_commit().hex)
 	if file is None:
 		return article_not_found(path, title)
 
@@ -157,7 +157,7 @@ def article_edit(path):
 		return redirect(url_for("article_edit", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(path, get_request_commit())
+	file = get_file(path, get_request_commit().hex)
 	form = EditForm(request.form)
 
 	if request.method == "POST" and form.validate():
@@ -210,7 +210,7 @@ def article_delete(path):
 		return redirect(url_for("article_edit", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(title)
+	file = get_file(title, "master")
 	if not file:
 		return article_not_found(path, title, error="This page cannot be deleted because it does not exist.")
 	form = DeleteForm(request.form)
