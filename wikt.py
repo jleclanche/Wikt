@@ -136,7 +136,7 @@ def article_view(path):
 		return redirect(url_for("article_view", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(title)
+	file = get_file(path)
 	if file is None:
 		return article_not_found(path, title)
 
@@ -150,7 +150,7 @@ def article_edit(path):
 		return redirect(url_for("article_edit", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(title)
+	file = get_file(path)
 	form = EditForm(request.form)
 
 	if request.method == "POST" and form.validate():
