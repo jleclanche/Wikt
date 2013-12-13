@@ -59,12 +59,12 @@ def commit(builder, message):
 	app.repo.create_commit("HEAD", author, WEB_COMMITTER, message, builder.write(), parents)
 
 
-def iter_commits(path):
+def iter_commits(path, head):
 	# There is no way in libgit/libgit2/pygit2 to get the commits affecting a specific file.
 	# Git does it by walking the entire commit tree. So do we.
 	last_commit = None
 	last_oid = None
-	for commit in app.repo.walk(app.repo.head.target, git.GIT_SORT_TIME):
+	for commit in app.repo.walk(head, git.GIT_SORT_TIME):
 		if path in commit.tree:
 			oid = commit.tree[path].oid
 			if oid != last_oid and last_oid:
@@ -175,14 +175,20 @@ def article_edit(path):
 	return render_template("article/edit.html", path=path, title=title, form=form, is_new=file is None)
 
 @app.route("/history/<path:path>")
-def article_history(path):
+@app.route("/history/<path:path>/<commit>")
+def article_history(path, commit=None):
 	_path = normalize_title(path)
 	if path != _path:
 		return redirect(url_for("article_edit", path=_path))
 	title = humanize_title(_path)
 	commits = []
 
-	for commit in iter_commits(path):
+	if commit:
+		head = app.repo.revparse_single(commit).oid
+	else:
+		head = app.repo.head.target
+
+	for commit in iter_commits(path, head):
 		commits.append({
 				"hash": commit.hex,
 				"message": commit.message,
