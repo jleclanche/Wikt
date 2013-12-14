@@ -76,17 +76,6 @@ def iter_commits(path, head):
 	if last_oid:
 		yield last_commit
 
-def commit_file(path, contents, message):
-	builder = app.repo.TreeBuilder(app.repo.revparse_single("master").tree)
-	builder.insert(path, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
-	commit(builder, message)
-
-
-def delete_file(path, message):
-	builder = app.repo.TreeBuilder(app.repo.revparse_single("master").tree)
-	builder.remove(path)
-	commit(builder, message)
-
 
 def article_not_found(article, error=None):
 	# This is a soft 404 error for actual articles that don't exist yet
@@ -135,6 +124,19 @@ class Article(object):
 
 	def __str__(self):
 		return self.title
+
+	def delete(summary):
+		# always get the master tree
+		tree = app.repo.revparse_single("master").tree
+		builder.remove(path)
+		commit(builder, summary)
+
+	def save(contents, summary):
+		# always get the master tree
+		tree = app.repo.revparse_single("master").tree
+		builder = app.repo.TreeBuilder(tree)
+		builder.insert(self.path, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
+		commit(builder, summary)
 
 
 def article(f):
@@ -235,7 +237,7 @@ def article_edit(article):
 			summary.notes.add("Minor-Edit")
 
 		summary.default_note("→ [[{}]]".format(title))
-		commit_file(article.path, clean_data(contents), summary.get_message())
+		article.save(clean_data(contents), summary.get_message())
 		flash("Your changes have been saved")
 		return redirect(url_for("article_view", path=article.path))
 
@@ -269,7 +271,7 @@ def article_delete(article):
 	form = DeleteForm(request.form)
 
 	if request.method == "POST" and form.validate():
-		delete_file(article.path, form.summary.data)
+		article.delete(form.summary.data)
 		flash("The page {} has been deleted".format(article.title))
 		return render_template("article/delete_complete.html")
 
