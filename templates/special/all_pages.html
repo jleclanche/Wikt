@@ -3,7 +3,7 @@
 {% block page %}
 	<ul>
 		{% for page in pages %}
-			<li><a href="{{ url_for('article_view', page=page) }}">{{page}}</a></li>
+			<li><a href="{{ url_for('article_view', path=page) }}">{{page}}</a></li>
 		{% endfor %}
 	</ul>
 {% endblock %}
