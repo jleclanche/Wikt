@@ -19,7 +19,10 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 
 
-namespaces = {"special"}
+namespaces = {"special", "wikt"}
+
+class WiktException(Exception):
+	pass
 
 def firstcap(s):
 	return s[0].upper() + s[1:]
@@ -30,9 +33,9 @@ def normalize_title(title):
 	"""
 	title = title.replace(" ", "_")
 	if ":" in title:
-		namespace, title = title.split(":")
-		if namespace.lower() not in namespaces:
-			return hard_404("No such namespace")
+		namespace, _, title = title.partition(":")
+		if not title or namespace.lower() not in namespaces:
+			raise WiktException("No such namespace")
 		title = "{}:{}".format(namespace.capitalize(), firstcap(title))
 	else:
 		title = firstcap(title)
