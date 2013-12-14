@@ -276,7 +276,7 @@ def article_delete(path):
 		return redirect(url_for("article_edit", path=_path))
 	title = humanize_title(_path)
 
-	file = get_file(title, "master")
+	file = get_file(path, "master")
 	if not file:
 		return article_not_found(path, title, error="This page cannot be deleted because it does not exist.")
 	form = DeleteForm(request.form)
