@@ -234,7 +234,10 @@ def article_edit(path):
 			else:
 				summary.default_note('Created page with "{}"'.format(summarize(contents)))
 
-		summary.default_note("Edited {}".format(title))
+		if form.minor_edit.data:
+			summary.notes.add("Minor-Edit")
+
+		summary.default_note("→ [[{}]]".format(title))
 		commit_file(path, clean_data(contents), summary.get_message())
 		flash("Your changes have been saved")
 		return redirect(url_for("article_view", path=path))
@@ -257,11 +260,11 @@ def article_history(path):
 
 	for commit in iter_commits(path, head):
 		commits.append({
-				"hash": commit.hex,
-				"message": commit.message,
-				"date": commit.commit_time,
-				"author": commit.author.name,
-			})
+			"hex": commit.hex,
+			"message": commit.message,
+			"date": commit.commit_time,
+			"author": commit.author.name,
+		})
 
 	return render_template("article/history.html", path=path, title=title, commits=commits)
 

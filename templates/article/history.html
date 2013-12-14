@@ -3,7 +3,10 @@
 {% block page %}
 	<ul>
 		{% for commit in commits %}
-			<li>{{ commit.author }} — {{ commit.message }} ({{commit.hash}})</li>
+			<li>
+				(<a href="/diff/{{path}}?curid={{commit.hex}}&amp;oldid={{commit.hex}}^">diff</a> | <a href="/history/{{path}}?commit={{commit.hex}}">hist</a>)
+				{{ commit.date }} &bull; {{ commit.author }} ({{ commit.message }})
+			</li>
 		{% endfor %}
 	</ul>
 {% endblock %}
