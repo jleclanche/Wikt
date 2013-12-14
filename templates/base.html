@@ -23,6 +23,7 @@ table.patch td.deleted {
 				<li><a href="{{ url_for('article_edit', path=article.path) }}">Edit</a></li>
 				<li><a href="{{ url_for('article_history', path=article.path) }}">View history</a></li>
 				<li><a href="{{ url_for('article_delete', path=article.path) }}">Delete</a></li>
+				<li><a href="{{ url_for('article_move', path=article.path) }}">Move</a></li>
 			</ul>
 		{% endblock %}
 		{% block page %}

@@ -2,7 +2,7 @@ import os.path
 import pygit2 as git
 from functools import wraps
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
-from forms import DeleteForm, EditForm
+from forms import DeleteForm, EditForm, MoveForm
 
 
 # configuration
@@ -77,6 +77,10 @@ def iter_commits(path, head):
 		yield last_commit
 
 
+def get_master_tree():
+	return app.repo.revparse_single("master").tree
+
+
 def article_not_found(article, error=None):
 	# This is a soft 404 error for actual articles that don't exist yet
 	return render_template("article/not_found.html", article=article, error=error), 404
@@ -95,7 +99,7 @@ def index():
 
 @app.route("/wiki/Special:AllPages")
 def all_pages():
-	tree = app.repo.revparse_single("master").tree
+	tree = get_master_tree()
 	pages = [f.name for f in tree]
 	return render_template("special/all_pages.html", pages=pages)
 
@@ -120,21 +124,39 @@ class Article(object):
 		self.path = path
 		self.title = humanize_title(path)
 		self.commit = app.repo.revparse_single(commit_name)
-		self.file = self.path in self.commit.tree and app.repo[self.commit.tree[path].oid]
+		self.file = self.path in self.commit.tree and app.repo[self.commit.tree[path].oid] or None
 
 	def __str__(self):
 		return self.title
 
-	def delete(summary):
+	def __repr__(self):
+		return "Article(path=%r, commit_name=%r)" % (self.path, self.commit.hex)
+
+	def create_redirect(self, path, summary):
+		"""
+		Create a redirect (symlink) to the article from \a path
+		Symlinks are just a file containing a path, and a LINK filemode
+		"""
 		# always get the master tree
-		tree = app.repo.revparse_single("master").tree
-		builder.remove(path)
+		builder = app.repo.TreeBuilder(get_master_tree())
+		builder.insert(path, app.repo.create_blob(self.path), git.GIT_FILEMODE_LINK)
 		commit(builder, summary)
 
-	def save(contents, summary):
+	def delete(self, summary):
 		# always get the master tree
-		tree = app.repo.revparse_single("master").tree
-		builder = app.repo.TreeBuilder(tree)
+		builder = app.repo.TreeBuilder(get_master_tree())
+		builder.remove(self.path)
+		commit(builder, summary)
+
+	def move(self, path, summary, leave_redirect):
+		builder = app.repo.TreeBuilder(get_master_tree())
+		builder.insert(path, app.repo.create_blob(self.file.data.decode()), git.GIT_FILEMODE_BLOB)
+		builder.remove(self.path)
+		commit(builder, summary)
+
+	def save(self, contents, summary):
+		# always get the master tree
+		builder = app.repo.TreeBuilder(get_master_tree())
 		builder.insert(self.path, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
 		commit(builder, summary)
 
@@ -236,7 +258,7 @@ def article_edit(article):
 		if form.minor_edit.data:
 			summary.notes.add("Minor-Edit")
 
-		summary.default_note("→ [[{}]]".format(title))
+		summary.default_note("→ [[{}]]".format(article.title))
 		article.save(clean_data(contents), summary.get_message())
 		flash("Your changes have been saved")
 		return redirect(url_for("article_view", path=article.path))
@@ -263,6 +285,25 @@ def article_history(article):
 	return render_template("article/history.html", article=article, commits=commits)
 
 
+@app.route("/move/<path:path>", methods=["GET", "POST"])
+@article
+def article_move(article):
+	if not article.file:
+		return article_not_found(article, error="This page cannot be moved because it does not exist.")
+	form = MoveForm(request.form)
+
+	if request.method == "POST" and form.validate():
+		target = Article(normalize_title(form.target.data), "master")
+		if target.file:
+			raise WiktException("Article already exists")
+		# Move the contents of the article to the target path
+		article.move(target.path, form.summary.data, leave_redirect=form.leave_redirect.data)
+		flash("The page {} has been moved to {}".format(article.title, target.title))
+		return render_template("article/move_complete.html", article=article, target=target)
+
+	return render_template("article/move.html", article=article, form=form)
+
+
 @app.route("/delete/<path:path>", methods=["GET", "POST"])
 @article
 def article_delete(article):
@@ -273,7 +314,7 @@ def article_delete(article):
 	if request.method == "POST" and form.validate():
 		article.delete(form.summary.data)
 		flash("The page {} has been deleted".format(article.title))
-		return render_template("article/delete_complete.html")
+		return render_template("article/delete_complete.html", article=article)
 
 	return render_template("article/delete.html", article=article, form=form)
 
@@ -282,6 +323,7 @@ REPO_TEMPLATE = {
 	MAIN_PAGE: "Welcome to the wiki. This is the main page.",
 	"Help:Contents": "Do you need help?",
 }
+
 
 if __name__ == "__main__":
 	import sys
