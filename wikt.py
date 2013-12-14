@@ -1,5 +1,6 @@
 import os.path
 import pygit2 as git
+from functools import wraps
 from flask import Flask, request, session, g, redirect, url_for, abort, render_template, flash
 from forms import DeleteForm, EditForm
 
@@ -136,13 +137,19 @@ def recent_changes():
 	return render_template("special/recent_changes.html", commits=commits)
 
 
-@app.route("/diff/<path:path>")
-def article_diff(path):
-	_path = normalize_title(path)
-	if path != _path:
-		return redirect(url_for("article_view", path=_path))
-	title = humanize_title(_path)
+def article(f):
+	@wraps(f)
+	def new_article(path):
+		_path = normalize_title(path)
+		if path != _path:
+			return redirect(url_for(f.__name__, path=_path))
+		title = humanize_title(_path)
+		return f(path, title)
+	return new_article
 
+@app.route("/diff/<path:path>")
+@article
+def article_diff(path, title):
 	curid = request.args.get("commit", "master")
 	oldid = request.args.get("oldid")
 
@@ -156,12 +163,8 @@ def article_diff(path):
 
 
 @app.route("/wiki/<path:path>")
-def article_view(path):
-	_path = normalize_title(path)
-	if path != _path:
-		return redirect(url_for("article_view", path=_path))
-	title = humanize_title(_path)
-
+@article
+def article_view(path, title):
 	file = get_file(path, get_request_commit().hex)
 	if file is None:
 		return article_not_found(path, title)
@@ -206,12 +209,8 @@ def summarize(s):
 
 
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
-def article_edit(path):
-	_path = normalize_title(path)
-	if path != _path:
-		return redirect(url_for("article_edit", path=_path))
-	title = humanize_title(_path)
-
+@article
+def article_edit(path, title):
 	file = get_file(path, get_request_commit().hex)
 	form = EditForm(request.form)
 
@@ -252,11 +251,8 @@ def article_edit(path):
 
 
 @app.route("/history/<path:path>")
-def article_history(path):
-	_path = normalize_title(path)
-	if path != _path:
-		return redirect(url_for("article_edit", path=_path))
-	title = humanize_title(_path)
+@article
+def article_history(path, title):
 	commits = []
 
 	head = get_request_commit()
@@ -273,12 +269,8 @@ def article_history(path):
 
 
 @app.route("/delete/<path:path>", methods=["GET", "POST"])
-def article_delete(path):
-	_path = normalize_title(path)
-	if path != _path:
-		return redirect(url_for("article_edit", path=_path))
-	title = humanize_title(_path)
-
+@article
+def article_delete(path, title):
 	file = get_file(path, "master")
 	if not file:
 		return article_not_found(path, title, error="This page cannot be deleted because it does not exist.")
