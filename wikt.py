@@ -148,6 +148,9 @@ class Article(object):
 		builder.remove(self.path)
 		commit(builder, summary)
 
+	def is_redirect(self):
+		return self.commit.tree[self.path].filemode == git.GIT_FILEMODE_LINK
+
 	def move(self, path, summary, leave_redirect):
 		builder = app.repo.TreeBuilder(get_master_tree())
 		builder.insert(path, app.repo.create_blob(self.file.data.decode()), git.GIT_FILEMODE_BLOB)
@@ -191,6 +194,9 @@ def article_diff(article):
 def article_view(article):
 	if article.file is None:
 		return article_not_found(article)
+
+	if article.is_redirect():
+		return redirect(url_for("article_view", path=article.file.data.decode()))
 
 	return render_template("article/view.html", article=article, contents=article.file.data.decode())
 
