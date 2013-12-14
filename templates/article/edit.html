@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Editing {{ title }}{% endblock %}
+{% block title %}Editing {{ article }}{% endblock %}
 {% block page %}
-	{% if is_new %}
+	{% if not article.file %}
 		You have followed a link to a page that does not exist yet. Your edit will be saved as a new page.
 	{% endif %}
 	<form action="" method="post">

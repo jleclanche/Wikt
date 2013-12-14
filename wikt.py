@@ -47,13 +47,6 @@ def humanize_title(title):
 	title = title.replace("_", " ")
 	return title
 
-def get_file(title, commit="master"):
-	tree = app.repo.revparse_single(commit).tree
-	try:
-		return app.repo[tree[title].oid]
-	except KeyError:
-		return None
-
 
 def commit(builder, message):
 	author = git.Signature("Jerome Leclanche", "jerome@leclan.ch")
@@ -68,7 +61,7 @@ def iter_commits(path, head):
 	# Git does it by walking the entire commit tree. So do we.
 	last_commit = None
 	last_oid = None
-	for commit in app.repo.walk(head, git.GIT_SORT_TIME):
+	for commit in app.repo.walk(head.oid, git.GIT_SORT_TIME):
 		if path in commit.tree:
 			oid = commit.tree[path].oid
 			if oid != last_oid and last_oid:
@@ -95,13 +88,9 @@ def delete_file(path, message):
 	commit(builder, message)
 
 
-def get_request_commit():
-	return app.repo.revparse_single(request.args.get("commit", "master")).oid
-
-
-def article_not_found(path, title, error=None):
+def article_not_found(article, error=None):
 	# This is a soft 404 error for actual articles that don't exist yet
-	return render_template("article/not_found.html", title=title, path=path, error=error), 404
+	return render_template("article/not_found.html", article=article, error=error), 404
 
 
 @app.errorhandler(404)
@@ -137,39 +126,46 @@ def recent_changes():
 	return render_template("special/recent_changes.html", commits=commits)
 
 
+class Article(object):
+	def __init__(self, path, commit_name):
+		self.path = path
+		self.title = humanize_title(path)
+		self.commit = app.repo.revparse_single(commit_name)
+		self.file = self.path in self.commit.tree and app.repo[self.commit.tree[path].oid]
+
+	def __str__(self):
+		return self.title
+
+
 def article(f):
 	@wraps(f)
 	def new_article(path):
 		_path = normalize_title(path)
 		if path != _path:
 			return redirect(url_for(f.__name__, path=_path))
-		title = humanize_title(_path)
-		return f(path, title)
+		commit = request.args.get("commit", "master")
+		return f(Article(path, commit))
 	return new_article
+
 
 @app.route("/diff/<path:path>")
 @article
-def article_diff(path, title):
-	curid = request.args.get("commit", "master")
-	oldid = request.args.get("oldid")
+def article_diff(article):
+	if article.file is None:
+		return article_not_found(article)
 
-	file = get_file(path, curid)
-	if file is None:
-		return article_not_found(path, title)
+	diff = app.repo.diff(request.args.get("oldid"), article.commit)
 
-	diff = app.repo.diff(oldid, curid)
-
-	return render_template("article/diff.html", title=title, path=path, diff=diff)
+	return render_template("article/diff.html", article=article, diff=diff)
 
 
 @app.route("/wiki/<path:path>")
 @article
-def article_view(path, title):
-	file = get_file(path, get_request_commit().hex)
-	if file is None:
-		return article_not_found(path, title)
+def article_view(article):
+	if article.file is None:
+		return article_not_found(article)
 
-	return render_template("article/view.html", title=title, contents=file.data.decode(), path=path)
+	return render_template("article/view.html", article=article, contents=article.file.data.decode())
 
 
 def clean_data(data):
@@ -210,19 +206,18 @@ def summarize(s):
 
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
 @article
-def article_edit(path, title):
-	file = get_file(path, get_request_commit().hex)
+def article_edit(article):
 	form = EditForm(request.form)
 
 	if request.method == "POST" and form.validate():
 		summary = CommitMessage(form.summary.data)
 		contents = form.text.data.strip()
 
-		if file:
-			if contents == file.data.decode().strip():
+		if article.file:
+			if contents == article.file.data.decode().strip():
 				# No changes.
 				flash("No changes.")
-				return redirect(url_for("article_view", path=path))
+				return redirect(url_for("article_view", path=article.path))
 
 			if not contents and not summary:
 				# The page has been blanked.
@@ -232,7 +227,7 @@ def article_edit(path, title):
 			if not contents:
 				# The page doesn't exist and has been sent blank. Ignore the commit.
 				flash("The page was not created.")
-				return redirect(url_for("article_view", path=path))
+				return redirect(url_for("article_view", path=article.path))
 			else:
 				summary.default_note('Created page with "{}"'.format(summarize(contents)))
 
@@ -240,24 +235,22 @@ def article_edit(path, title):
 			summary.notes.add("Minor-Edit")
 
 		summary.default_note("→ [[{}]]".format(title))
-		commit_file(path, clean_data(contents), summary.get_message())
+		commit_file(article.path, clean_data(contents), summary.get_message())
 		flash("Your changes have been saved")
-		return redirect(url_for("article_view", path=path))
+		return redirect(url_for("article_view", path=article.path))
 
-	if file is not None:
-		form.text.data = file.data.decode().strip()
+	if article.file is not None:
+		form.text.data = article.file.data.decode().strip()
 
-	return render_template("article/edit.html", path=path, title=title, form=form, is_new=file is None)
+	return render_template("article/edit.html", article=article, form=form)
 
 
 @app.route("/history/<path:path>")
 @article
-def article_history(path, title):
+def article_history(article):
 	commits = []
 
-	head = get_request_commit()
-
-	for commit in iter_commits(path, head):
+	for commit in iter_commits(article.path, article.commit):
 		commits.append({
 			"hex": commit.hex,
 			"message": commit.message,
@@ -265,23 +258,22 @@ def article_history(path, title):
 			"author": commit.author.name,
 		})
 
-	return render_template("article/history.html", path=path, title=title, commits=commits)
+	return render_template("article/history.html", article=article, commits=commits)
 
 
 @app.route("/delete/<path:path>", methods=["GET", "POST"])
 @article
-def article_delete(path, title):
-	file = get_file(path, "master")
-	if not file:
-		return article_not_found(path, title, error="This page cannot be deleted because it does not exist.")
+def article_delete(article):
+	if not article.file:
+		return article_not_found(article, error="This page cannot be deleted because it does not exist.")
 	form = DeleteForm(request.form)
 
 	if request.method == "POST" and form.validate():
-		delete_file(path, form.summary.data)
-		flash("The page {} has been deleted".format(title))
+		delete_file(article.path, form.summary.data)
+		flash("The page {} has been deleted".format(article.title))
 		return render_template("article/delete_complete.html")
 
-	return render_template("article/delete.html", path=path, title=title, form=form)
+	return render_template("article/delete.html", article=article, form=form)
 
 
 REPO_TEMPLATE = {

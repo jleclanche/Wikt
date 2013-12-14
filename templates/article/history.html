@@ -1,10 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Recent changes{% endblock %}
+{% block title %}History for {{ article }}{% endblock %}
 {% block page %}
 	<ul>
 		{% for commit in commits %}
 			<li>
-				(<a href="/diff/{{path}}?commit={{commit.hex}}&amp;oldid={{commit.hex}}^">diff</a> | <a href="/history/{{path}}?commit={{commit.hex}}">hist</a>)
+				(<a href="/diff/{{article.path}}?commit={{commit.hex}}&amp;oldid={{commit.hex}}^">diff</a> | <a href="/history/{{article.path}}?commit={{commit.hex}}">hist</a>)
 				{{ commit.date }} &bull; {{ commit.author }} ({{ commit.message }})
 			</li>
 		{% endfor %}
