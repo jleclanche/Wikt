@@ -151,7 +151,10 @@ class Article(object):
 	def move(self, path, summary, leave_redirect):
 		builder = app.repo.TreeBuilder(get_master_tree())
 		builder.insert(path, app.repo.create_blob(self.file.data.decode()), git.GIT_FILEMODE_BLOB)
-		builder.remove(self.path)
+		if leave_redirect:
+			builder.insert(self.path, app.repo.create_blob(path), git.GIT_FILEMODE_LINK)
+		else:
+			builder.remove(self.path)
 		commit(builder, summary)
 
 	def save(self, contents, summary):
