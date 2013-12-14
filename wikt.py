@@ -149,7 +149,7 @@ def article_diff(path):
 
 	diff = app.repo.diff(oldid, curid)
 
-	return render_template("article/diff.html", title=title, diff=diff)
+	return render_template("article/diff.html", title=title, path=path, diff=diff)
 
 
 @app.route("/wiki/<path:path>")
