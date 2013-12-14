@@ -295,6 +295,7 @@ REPO_TEMPLATE = {
 }
 
 if __name__ == "__main__":
+	import sys
 	try:
 		app.repo = git.Repository(REPOSITORY_PATH)
 	except KeyError:
@@ -306,4 +307,9 @@ if __name__ == "__main__":
 			builder.insert(file, app.repo.create_blob(clean_data(contents)), git.GIT_FILEMODE_BLOB)
 			app.repo.create_commit("HEAD", author, WEB_COMMITTER, "Initial commit", builder.write(), [])
 
-	app.run()
+	ip, port = "127.0.0.1", 5000
+	if len(sys.argv) > 1:
+		ip = sys.argv[1]
+		if len(sys.argv) > 2:
+			port = int(sys.argv[2])
+	app.run(ip, port)
