@@ -175,6 +175,33 @@ def clean_data(data):
 	return data
 
 
+class CommitMessage(object):
+	def __init__(self, s):
+		self.s = s
+		self.notes = set()
+
+	def __bool__(self):
+		return bool(self.s)
+
+	def get_message(self):
+		self.s = self.s.strip()
+		while "\n\n" in self.s:
+			self.s = self.s.replace("\n\n", "\n")
+		return self.s + "\n\n" + "\n".join(self.notes)
+
+	def default_note(self, note):
+		if not self.s:
+			self.s = note
+		else:
+			self.notes.add("Note: {}".format(note))
+
+
+def summarize(s):
+	if len(s) > 50:
+		return s[:47] + "..."
+	return s
+
+
 @app.route("/edit/<path:path>", methods=["GET", "POST"])
 def article_edit(path):
 	_path = normalize_title(path)
@@ -186,24 +213,34 @@ def article_edit(path):
 	form = EditForm(request.form)
 
 	if request.method == "POST" and form.validate():
-		if not form.text.data:
-			# The page has been blanked. Ignore the edit if it doesn't exist.
-			if file:
-				if not form.summary.data:
-					form.summary.data = "Blanked the page"
-				commit_file(path, form.text.data, form.summary.data)
-				flash("The page {} has been blanked".format(title))
-		elif form.text.data != (file and file.data.decode()):
-			# Commit only if the page is new or if its contents have changed
-			data = clean_data(form.text.data)
-			commit_file(path, data, form.summary.data)
-			flash("Your changes have been saved")
+		summary = CommitMessage(form.summary.data)
+		contents = form.text.data.strip()
+
+		if file:
+			if contents == file.data.decode().strip():
+				# No changes.
+				flash("No changes.")
+				return redirect(url_for("article_view", path=path))
+
+			if not contents and not summary:
+				# The page has been blanked.
+				summary.default_note("Blanked the page")
 		else:
-			flash("No changes")
+			# the page is new
+			if not contents:
+				# The page doesn't exist and has been sent blank. Ignore the commit.
+				flash("The page was not created.")
+				return redirect(url_for("article_view", path=path))
+			else:
+				summary.default_note('Created page with "{}"'.format(summarize(contents)))
+
+		summary.default_note("Edited {}".format(title))
+		commit_file(path, clean_data(contents), summary.get_message())
+		flash("Your changes have been saved")
 		return redirect(url_for("article_view", path=path))
 
 	if file is not None:
-		form.text.data = file.data.decode()
+		form.text.data = file.data.decode().strip()
 
 	return render_template("article/edit.html", path=path, title=title, form=form, is_new=file is None)
 
