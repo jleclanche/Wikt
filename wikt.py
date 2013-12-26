@@ -121,10 +121,23 @@ def recent_changes():
 
 class Article(object):
 	def __init__(self, path, commit_name):
+		# self.path: the full normalized path to the file
+		# self.directory_path: the internal path to the directory containing the article (for subarticles)
+		# self.internal_path: the full internal path
+		# self.file_name: the name of the file only (same as self.path except for subarticles)
+		# self.title: the humanized title of the page
+		# self.commit: the commit the article is at
+		# self.file: the file containing the article (None if the article does not exist)
 		self.path = path
-		self.title = humanize_title(path)
+		if "/" in path:
+			self.directory_path, self.file_name = self._get_subpage_path()
+			self.internal_path = "/".join((self.directory_path, self.file_name))
+		else:
+			self.directory_path, self.file_name = "", self.path
+			self.internal_path = self.path
+		self.title = humanize_title(self.path)
 		self.commit = app.repo.revparse_single(commit_name)
-		self.file = self.path in self.commit.tree and app.repo[self.commit.tree[path].oid] or None
+		self.file = self.internal_path in self.commit.tree and app.repo[self.commit.tree[path].oid] or None
 
 	def __str__(self):
 		return self.title
@@ -132,38 +145,38 @@ class Article(object):
 	def __repr__(self):
 		return "Article(path=%r, commit_name=%r)" % (self.path, self.commit.hex)
 
-	def create_redirect(self, path, summary):
-		"""
-		Create a redirect (symlink) to the article from \a path
-		Symlinks are just a file containing a path, and a LINK filemode
-		"""
-		# always get the master tree
-		builder = app.repo.TreeBuilder(get_master_tree())
-		builder.insert(path, app.repo.create_blob(self.path), git.GIT_FILEMODE_LINK)
-		commit(builder, summary)
+	def _get_subpage_path(self):
+		# The following needs to work:
+		# Foo/bar -> Foo#dir/bar
+		# Foo/bar/baz -> Foo#dir/bar#dir/baz
+		# Foo/ -> Foo#dir/#data
+		path = self.path.split("/")
+		name = path.pop()
+		if not name:
+			name = "#data"
+		return "/".join(x+"#dir" for x in path), name
 
 	def delete(self, summary):
-		# always get the master tree
 		builder = app.repo.TreeBuilder(get_master_tree())
-		builder.remove(self.path)
+		builder.remove(self.internal_path)
 		commit(builder, summary)
 
 	def is_redirect(self):
-		return self.commit.tree[self.path].filemode == git.GIT_FILEMODE_LINK
+		return self.commit.tree[self.internal_path].filemode == git.GIT_FILEMODE_LINK
 
 	def move(self, path, summary, leave_redirect):
 		builder = app.repo.TreeBuilder(get_master_tree())
 		builder.insert(path, app.repo.create_blob(self.file.data.decode()), git.GIT_FILEMODE_BLOB)
 		if leave_redirect:
-			builder.insert(self.path, app.repo.create_blob(path), git.GIT_FILEMODE_LINK)
+			builder.insert(self.internal_path, app.repo.create_blob(path), git.GIT_FILEMODE_LINK)
 		else:
-			builder.remove(self.path)
+			builder.remove(self.internal_path)
 		commit(builder, summary)
 
 	def save(self, contents, summary):
 		# always get the master tree
 		builder = app.repo.TreeBuilder(get_master_tree())
-		builder.insert(self.path, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
+		builder.insert(self.internal_path, app.repo.create_blob(contents), git.GIT_FILEMODE_BLOB)
 		commit(builder, summary)
 
 
